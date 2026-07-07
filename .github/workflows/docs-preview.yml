@@ -1,13 +1,13 @@
 name: Docs Preview
 
-# Builds the mkdocs site for a PR and deploys it to Cloudflare Pages.
+# Builds the Zensical site for a PR and deploys it to Cloudflare Pages.
 #
-# Security: mkdocs executes Python from the PR (mkdocstrings imports src/mcp,
-# `!!python/name:` directives). The build is gated by `authorize` (admin sender
-# for auto-preview, admin/maintainer commenter for /preview-docs) and isolated
-# from Cloudflare secrets — `build` runs PR code with no secrets and hands the
-# static site to `deploy` via an artifact, so PR code never shares a runner
-# with the Cloudflare token.
+# Security: the build executes Python from the PR (mkdocstrings imports src/mcp,
+# the scripts/docs/ generators run). The build is gated by `authorize` (admin
+# sender for auto-preview, admin/maintainer commenter for /preview-docs) and
+# isolated from Cloudflare secrets — `build` runs PR code with no secrets and
+# hands the static site to `deploy` via an artifact, so PR code never shares a
+# runner with the Cloudflare token.
 #
 # Required configuration:
 #   - secrets.CLOUDFLARE_API_TOKEN   (scope: Account → Cloudflare Pages → Edit)
@@ -21,6 +21,7 @@ on:
       - docs/**
       - docs_src/**
       - mkdocs.yml
+      - scripts/docs/**
       - pyproject.toml
   issue_comment:
     types: [created]
@@ -129,7 +130,11 @@ jobs:
           version: 0.9.5
 
       - run: uv sync --frozen --group docs
-      - run: uv run --frozen --no-sync mkdocs build
+      # Zensical runs no MkDocs plugins/hooks: generate the API reference and the
+      # concrete config, build, then generate llms.txt (see scripts/docs/).
+      - run: uv run --frozen --no-sync python scripts/docs/build_config.py
+      - run: uv run --frozen --no-sync zensical build -f mkdocs.gen.yml --strict
+      - run: uv run --frozen --no-sync python scripts/docs/llms_txt.py --site-dir site
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
