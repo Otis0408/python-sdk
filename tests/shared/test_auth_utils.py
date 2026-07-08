@@ -34,6 +34,19 @@ def test_resource_url_from_server_url_preserves_port():
     assert resource_url_from_server_url("http://example.com:8080/") == "http://example.com:8080/"
 
 
+def test_resource_url_from_server_url_strips_default_port():
+    """RFC 3986 6.2.3: an explicit default port equals none, matching the
+    pydantic/AnyUrl normalization used for the Protected Resource Metadata
+    resource — so the canonical form and the PRM resource compare equal."""
+    assert resource_url_from_server_url("https://example.com:443/mcp") == "https://example.com/mcp"
+    assert resource_url_from_server_url("http://example.com:80/") == "http://example.com/"
+    # A default port on the "wrong" scheme is a real, non-default port: keep it.
+    assert resource_url_from_server_url("https://example.com:80/mcp") == "https://example.com:80/mcp"
+    # The canonical form now matches a default-port-stripped resource.
+    canonical = resource_url_from_server_url("https://example.com:443/mcp")
+    assert check_resource_allowed(canonical, "https://example.com/mcp") is True
+
+
 def test_resource_url_from_server_url_lowercase_scheme_and_host():
     """Scheme and host should be lowercase for canonical form."""
     assert resource_url_from_server_url("HTTPS://EXAMPLE.COM/path") == "https://example.com/path"

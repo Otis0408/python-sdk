@@ -23,7 +23,18 @@ def resource_url_from_server_url(url: str | HttpUrl | AnyUrl) -> str:
 
     # Parse the URL and remove fragment, create canonical form
     parsed = urlsplit(url_str)
-    canonical = urlunsplit(parsed._replace(scheme=parsed.scheme.lower(), netloc=parsed.netloc.lower(), fragment=""))
+    scheme = parsed.scheme.lower()
+    netloc = parsed.netloc.lower()
+
+    # RFC 3986 §6.2.3: an explicit default port (443 for https, 80 for http) is
+    # equivalent to none. Strip it so the canonical form matches pydantic/AnyUrl
+    # normalization (which drops it); otherwise "https://host:443/x" fails to
+    # match a Protected Resource Metadata resource of "https://host/x".
+    default_port = {"https": ":443", "http": ":80"}.get(scheme)
+    if default_port is not None and netloc.endswith(default_port):
+        netloc = netloc[: -len(default_port)]
+
+    canonical = urlunsplit(parsed._replace(scheme=scheme, netloc=netloc, fragment=""))
 
     return canonical
 
