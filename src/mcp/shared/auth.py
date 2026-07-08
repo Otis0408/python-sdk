@@ -108,8 +108,13 @@ class OAuthClientMetadata(BaseModel):
     def validate_scope(self, requested_scope: str | None) -> list[str] | None:
         if requested_scope is None:
             return None
-        requested_scopes = requested_scope.split(" ")
-        allowed_scopes = [] if self.scope is None else self.scope.split(" ")
+        # Split on arbitrary whitespace (str.split() with no argument) so
+        # irregular spacing collapses and empty tokens are dropped, matching
+        # the registration handler and RFC 6749 §3.3. requested_scope.split(" ")
+        # would instead keep "" tokens for repeated/edge spaces (and turn "" into
+        # [""]), spuriously failing the membership check below.
+        requested_scopes = requested_scope.split()
+        allowed_scopes = [] if self.scope is None else self.scope.split()
         for scope in requested_scopes:
             if scope not in allowed_scopes:
                 raise InvalidScopeError(f"Client was not registered with scope {scope}")

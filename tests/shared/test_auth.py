@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from mcp.shared.auth import OAuthClientInformationFull, OAuthClientMetadata, OAuthMetadata
+from mcp.shared.auth import InvalidScopeError, OAuthClientInformationFull, OAuthClientMetadata, OAuthMetadata
 
 
 def test_oauth():
@@ -138,3 +138,29 @@ def test_invalid_non_empty_url_still_rejected():
     }
     with pytest.raises(ValidationError):
         OAuthClientMetadata.model_validate(data)
+
+
+@pytest.mark.parametrize(
+    "requested",
+    ["read write", "read  write", "read write ", " read write"],
+    ids=["single_space", "double_space", "trailing_space", "leading_space"],
+)
+def test_validate_scope_accepts_irregular_whitespace(requested: str):
+    """A client registered with {read, write} must accept those scopes
+    regardless of irregular spacing; split(" ") used to keep "" tokens and
+    reject them, diverging from the registration handler's .split()."""
+    client = OAuthClientMetadata(redirect_uris=["https://client.example/cb"], scope="read write")
+    assert client.validate_scope(requested) == ["read", "write"]
+
+
+def test_validate_scope_treats_empty_string_as_no_scopes():
+    """An empty scope string means no scopes ([]), not a single "" scope."""
+    client = OAuthClientMetadata(redirect_uris=["https://client.example/cb"], scope="read write")
+    assert client.validate_scope("") == []
+
+
+def test_validate_scope_still_rejects_unregistered_scope():
+    """A genuinely unregistered scope is still rejected."""
+    client = OAuthClientMetadata(redirect_uris=["https://client.example/cb"], scope="read")
+    with pytest.raises(InvalidScopeError):
+        client.validate_scope("read write")
