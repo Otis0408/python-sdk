@@ -68,7 +68,9 @@ _OPERATORS: frozenset[str] = frozenset({"+", "#", ".", "/", ";", "?", "&"})
 # RFC 6570 §2.3: varname = varchar *(["."] varchar), varchar = ALPHA / DIGIT / "_"
 # Dots appear only between varchar groups — not consecutive, not trailing.
 # (Percent-encoded varchars are technically allowed but unseen in practice.)
-_VARNAME_RE = re.compile(r"^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)*$")
+# End-anchored with \Z rather than $: in Python's default mode $ also matches
+# just before a single trailing newline, which would let "{name\n}" parse.
+_VARNAME_RE = re.compile(r"^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)*\Z")
 
 DEFAULT_MAX_TEMPLATE_LENGTH = 8_192
 DEFAULT_MAX_VARIABLES = 256

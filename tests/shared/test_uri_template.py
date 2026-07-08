@@ -117,6 +117,14 @@ def test_parse_varname_with_dots_and_underscores():
     assert tmpl.variable_names == ["foo_bar.baz"]
 
 
+@pytest.mark.parametrize("body", ["name\n", "a.b\n"])
+def test_parse_rejects_varname_with_trailing_newline(body: str):
+    # A newline is not a valid RFC 6570 varchar. Python's $ (unlike \Z) matches
+    # just before a single trailing newline, so "{name\n}" used to parse.
+    with pytest.raises(InvalidUriTemplate, match="Invalid variable name"):
+        UriTemplate.parse("docs/{" + body + "}")
+
+
 def test_parse_rejects_unclosed_expression():
     with pytest.raises(InvalidUriTemplate, match="Unclosed expression") as exc:
         UriTemplate.parse("file://{name")
